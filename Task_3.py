@@ -1,8 +1,8 @@
 import numpy as np
 
-key = "a0 88 23 2a fa 54 a3 6c fe 2c 39 76 17 b1 39 05"
+key = "5d 99 67 ec ca 32 fd 5a 2f 15 98 6e 36 19 b0 4f"
 key = np.array([key.split(' ')[len(key.split(' ')) // 4 * i:len(key.split(' ')) // 4 * (i + 1)] for i in range(4)])
-msg = "19 a0 9a e9 3d f4 c6 f8 e3 e2 8d 48 be 2b 2a 08"
+msg = "e4 17 0c 99 ea 8d c5 fc f7 1c d2 4a 2a ac 7b 25"
 msg = np.array([msg.split(' ')[len(msg.split(' ')) // 4 * i:len(msg.split(' ')) // 4 * (i + 1)] for i in range(4)])
 
 
@@ -40,17 +40,36 @@ def shiftrow(state):
     return state
 
 
+def galuafieldmult(row_1, row_2):
+    tmp = []
+    for i in range(len(row_1)):
+        if row_1[i] == 0x01:
+            tmp.append(int(row_2[i], 16))
+        elif row_1[i] == 0x02:
+            tmp.append((int(row_2[i], 16) << 1) ^ (0x11b * int(int(row_2[i], 16) // (2 ** 7) == 1)))
+        else:
+            tmp.append((int(row_2[i], 16) << 1) ^ (0x11b * int(int(row_2[i], 16) // (2 ** 7) == 1)) ^ int(row_2[i], 16))
+    return format(tmp[0] ^ tmp[1] ^ tmp[2] ^ tmp[3], '0>2x')
+
+
 def mixcolumn(state):
     matrix = ['02', '03', '01', '01']
     matrix = np.array([[int(matrix[(j - i) % 4], 16) for j in range(4)] for i in range(4)])
     state = state.transpose()
-    for i in range(len(state)):
-        state[i] = matrix.dot(state[i].transpose())
+    for i in range(len(state[0])):
+        state[i] = [galuafieldmult(matrix[j], state[i]) for j in range(len(state[i]))]
     return state.transpose()
 
 
 def addroundkey(state, round_key):
-    return
+    for i in range(len(state)):
+        for j in range(len(state[i])):
+            state[i][j] = format(int(round_key[i][j], 16) ^ int(state[i][j], 16), '0>2x')
+    return state
 
 
-print(msg.transpose())
+
+print(*bytessub(msg))
+print(*shiftrow(msg))
+print(*mixcolumn(msg))
+print(*addroundkey((msg), key))
